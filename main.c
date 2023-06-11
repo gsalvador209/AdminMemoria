@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) { //argc numero de argumentos dados y argv arre
             for (i = 0; i < 5; i++) {
                 if (areasLibres[i].tamano >= accion) {
                     // Encontramos un área libre con tamaño suficiente
-                    asignarPaginas(id_proceso, accion, areasLibres[i].marcos, memoriaReal);
+                    //asignarPaginas(id_proceso, accion, areasLibres[i].marcos, memoriaReal);
                     break;
                 }
             }
@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) { //argc numero de argumentos dados y argv arre
                 int paginasRestantes = accion;
                 for (i = 0; i < 5; i++) {
                     if (areasLibres[i].tamano > paginasRestantes) {
-                        asignarPaginas(id_proceso, paginasRestantes, areasLibres[i].marcos, memoriaReal);
-                        dividirAreaLibre(i, paginasRestantes, areasLibres);
+                        //asignarPaginas(id_proceso, paginasRestantes, areasLibres[i].marcos, memoriaReal);
+                        //dividirAreaLibre(i, paginasRestantes, areasLibres);
                         break;
                     } else {
-                        asignarPaginas(id_proceso, areasLibres[i].tamano, areasLibres[i].marcos, memoriaReal);
+                        //asignarPaginas(id_proceso, areasLibres[i].tamano, areasLibres[i].marcos, memoriaReal);
                         paginasRestantes -= areasLibres[i].tamano;
                         areasLibres[i].marcos = NULL; // El área libre se ha utilizado completamente
                     }
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) { //argc numero de argumentos dados y argv arre
             }
         } else if (accion == -1) {
             // Acción: Terminar proceso
-            liberarPaginas(id_proceso, memoriaReal, areasLibres);
+            //liberarPaginas(id_proceso, memoriaReal, areasLibres);
         } else {
             // Acción inválida
             printf("Acción inválida para el proceso %d\n", id_proceso);
