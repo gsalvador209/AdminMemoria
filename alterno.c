@@ -2,28 +2,33 @@
 #include <stdlib.h>
 
 //**********ESTRUCTURAS A USAR********************
+/// @brief Esta estructura almacena la info del proceso: su id y tamaño
 typedef struct Proceso{
     int id_proceso; // El identificador de proceso
     int tam; //Tamaño del proceso
 } Proceso;
 
+/// @brief Este nodo es para la lista de procesos que se lee del archivo
 typedef struct nodoPro{
     Proceso proc;
     struct nodoPro* siguiente;
 } NodoProc;
 
+/// @brief Pensada únicamente para hacer una cola de procesos
 typedef struct 
 {
     NodoProc* frente;
     NodoProc* final;
 } Cola;
 
+/// @brief Este nodo es para la lista de direcciones del vector de areas libres
 typedef struct nodoDirs{
     int dir; //"dirección" de memoria en la que se almacena el proceso, 0-15
     Proceso proc; //Datos del proceso
     struct nodoDirs* siguiente; //La dirección del siguiente elemento en la lisya
 } Nodo;
 
+/// @brief Esta lista es la que se incluye en cada slot del vector de areas libres
 typedef struct {
     Nodo* inicio;
     Nodo* fin;
@@ -31,11 +36,13 @@ typedef struct {
 } Lista;
 
 //*********PROTOTIPOS DE FUNCIONES********************
+//Operaciones vectorAL
+Lista* inicializarVectorAL();
+void cerrarVectorAL(Lista *);
 //Operaciones de lista
 Lista crearLista();
 void agregarFinal(Lista*, Proceso, int);
 void borrarElemento(Lista*, int);
-void inicializarVectorAL();
 void liberarLista(Lista*);
 //Operaciones de Cola
 Cola crearCola();
@@ -44,50 +51,50 @@ void encolar(Cola*, Proceso);
 Proceso frente(Cola);
 Proceso desencolar(Cola*);
 void liberarCola(Cola* );
+//Lectura del archivo
+FILE* verificarArchivo(int, char**);
+Cola encolarProcesos(Cola *,FILE *);
+
 
 
 int main(int argc, char* argv[]){
     int id_proceso, tam;
-    Cola cola_procesos = crearCola();
+    Cola cola_procesos = crearCola(); //Contiene todos los procesos indicados en el archivo de texto
+    Lista *vectorAL = inicializarVectorAL();
 
-    if (argc < 2) {
-        printf("Ingresa solo el nombre del programa y del archivo.\n");
-        return 1;
+    FILE * archivo = verificarArchivo(argc,argv);
+    if (archivo == NULL){
+        return -1;
     }
+    
+    encolarProcesos(&cola_procesos, archivo);
 
-    FILE* archivo = fopen(argv[1], "r"); //De los argumentos abre el 1 (el cero es el programa)
-    if (archivo == NULL) {
-        printf("No se pudo abrir el archivo.\n");
-        return 1;
-    }
-
-    while (fscanf(archivo, "%d %d", &id_proceso, &tam) == 2) {
-        Proceso p;
-        p.id_proceso = id_proceso;
-        p.tam = tam;
-        encolar(&cola_procesos,p);
-    }
     while(!estaVacia(cola_procesos)){
         Proceso prueba = desencolar(&cola_procesos);
         printf("Proceso: %d Tamaño: %d.\n",prueba.id_proceso,prueba.tam);
-    }
-       
-    
+    }    
 
-
-    //inicializarVectorAL();
-
-
-
+    liberarCola(&cola_procesos);
+    cerrarVectorAL(vectorAL);
     return 0;
 }
 
-void inicializarVectorAL(){
+/// @brief Crea el vector de areas libres y devuelve su dirección
+Lista* inicializarVectorAL(){
     int i=0;
-    Lista vectorAL[5];
+    Lista* vectorAL = (Lista*)malloc(5 * sizeof(Lista));
     for(i = 0; i < 5;i++){
         vectorAL[i] = crearLista();
     }
+    return vectorAL;
+}
+
+void cerrarVectorAL(Lista * vectorAL){
+    int i;
+    for(i = 0; i < 5;i++){
+        liberarLista(&vectorAL[i]);
+    }
+    free(vectorAL);
 }
 
 
@@ -217,4 +224,30 @@ void liberarCola(Cola* cola) {
     while (!estaVacia(*cola)) {
         desencolar(cola);
     }
+}
+
+FILE* verificarArchivo(int argc, char* argv[]){
+    if (argc < 2) { //Para ejecutarse, se debe dar el nombre del archivo
+        printf("Ingresa el nombre del archivo como primer argumento.\n");
+        return NULL;
+    }
+
+    FILE* archivo = fopen(argv[1], "r"); //De los argumentos abre el 1 (el cero es el programa)
+    if (archivo == NULL) {
+        printf("No se pudo abrir el archivo.\n");
+        return NULL;
+    }
+
+    return archivo;
+}
+
+Cola encolarProcesos(Cola * cola_procesos,FILE * archivo){
+    int id_proceso, tam;
+    while (fscanf(archivo, "%d %d", &id_proceso, &tam) == 2) {
+        Proceso p;
+        p.id_proceso = id_proceso;
+        p.tam = tam;
+        encolar(cola_procesos,p);
+    }
+    fclose(archivo);
 }
