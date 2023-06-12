@@ -31,17 +31,26 @@ typedef struct {
 } Lista;
 
 //*********PROTOTIPOS DE FUNCIONES********************
+//Operaciones de lista
 Lista crearLista();
 void agregarFinal(Lista*, Proceso, int);
 void borrarElemento(Lista*, int);
 void inicializarVectorAL();
 void liberarLista(Lista*);
+//Operaciones de Cola
+Cola crearCola();
+int estaVacia(Cola);
+void encolar(Cola*, Proceso);
+Proceso frente(Cola);
+Proceso desencolar(Cola*);
+void liberarCola(Cola* );
 
 
 int main(int argc, char* argv[]){
-    int id_proceso, tam; 
+    int id_proceso, tam;
+    Cola cola_procesos = crearCola();
 
-    if (argc != 2) {
+    if (argc < 2) {
         printf("Ingresa solo el nombre del programa y del archivo.\n");
         return 1;
     }
@@ -53,11 +62,20 @@ int main(int argc, char* argv[]){
     }
 
     while (fscanf(archivo, "%d %d", &id_proceso, &tam) == 2) {
-        agregarAlFinal(&lista, entero1, entero2);
+        Proceso p;
+        p.id_proceso = id_proceso;
+        p.tam = tam;
+        encolar(&cola_procesos,p);
     }
+    while(!estaVacia(cola_procesos)){
+        Proceso prueba = desencolar(&cola_procesos);
+        printf("Proceso: %d Tamaño: %d.\n",prueba.id_proceso,prueba.tam);
+    }
+       
+    
 
 
-    inicializarVectorAL();
+    //inicializarVectorAL();
 
 
 
@@ -145,7 +163,7 @@ void liberarLista(Lista* lista) {
     lista->longitud = 0;
 }
 
-Cola crearPila(){
+Cola crearCola(){
     Cola cola;
     cola.frente = NULL;
     cola.final = NULL;
@@ -171,20 +189,22 @@ void encolar(Cola* cola, Proceso proc) {
 }
 
 Proceso frente(Cola cola) { //Ve el elemento de enfrente
+    Proceso proc;
     if (estaVacia(cola)) {
         printf("La cola está vacía.\n");
-        return -1; 
+        return proc; 
     }
     return cola.frente->proc;
 }
 
 Proceso desencolar(Cola* cola) { //Regresa el proceso del elemento del frnte y desencola
+    Proceso proc;
     if (estaVacia(*cola)) {
         printf("La cola está vacía.\n");
-        return -1; 
+        return proc; 
     }
-    Nodo* nodoEliminado = cola->frente;
-    Proceso proc = nodoEliminado->proc;
+    NodoProc* nodoEliminado = cola->frente;
+    proc = nodoEliminado->proc;
     cola->frente = cola->frente->siguiente;
     if (cola->frente == NULL) {
         cola->final = NULL;
