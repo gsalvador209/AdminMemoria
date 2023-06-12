@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 //**********ESTRUCTURAS A USAR********************
+
 /// @brief Esta estructura almacena la info del proceso: su id y tamaño. id= -1 Indica memoria disponible
 typedef struct Proceso{
     int id_proceso; // El identificador de proceso
@@ -44,7 +46,7 @@ void imprimirRenglon(int, Lista*);
 //Operaciones de lista
 Lista* crearLista();
 void agregarFinal(Lista*, Proceso, int);
-void borrarElemento(Lista*, int);
+//void borrarElemento(Lista*, int);
 void liberarLista(Lista*);
 int listaEstaVacia(Lista);
 //Operaciones de Cola
@@ -57,39 +59,54 @@ void liberarCola(Cola* );
 //Lectura del archivo
 FILE* verificarArchivo(int, char**);
 Cola encolarProcesos(Cola *,FILE *);
-
+//Memoria
+int memoriaDisponible(Lista**);
+void imprimirMemoria(Lista **);
+int dividirMemoria(Lista**,int);
+int solicitarDirMemoria(int,Lista**,int);
+int asignarProceso(Proceso , Lista **, int );
+int liberarDireccion(Lista **, int);
 
 
 int main(int argc, char* argv[]){
     int id_proceso, tam;
     Cola cola_procesos = crearCola(); //Contiene todos los procesos indicados en el archivo de texto
     Lista **vectorAL = inicializarVectorAL();
+    imprimirMemoria(vectorAL);
+    imprimirVector(vectorAL);
 
     FILE * archivo = verificarArchivo(argc,argv);
     if (archivo == NULL){
         return -1;
     }
-    
+
+    //Del archivo, guarda todos los procesos en la cola y cierra el archivo    
     encolarProcesos(&cola_procesos, archivo);
-
+    
     while(!colaEstaVacia(cola_procesos)){
-        Proceso prueba = desencolar(&cola_procesos);
-        printf("Proceso: %d Tamaño: %d.\n",prueba.id_proceso,prueba.tam);
-    }    
-
-    //En este punto, todo el archivo fue codificado a la cola de procesos
-    //TO-DO:
-    //Verificar si el tamaño es -1 o >0
-        //Si es mayor a cero, asignarle espacio
-            //Verificar si hay espacio
-                //Si hay espacio, almacenarlo
-                //Si no hay, dividirlo en mitades
-        //Si es -1 liberar memoria
-    //Actualizar vector de AL
-    //Imprimir memoria
-
-    imprimirVector(vectorAL);
-
+        Proceso proceso_actual = desencolar(&cola_procesos);
+        int tam_proceso = proceso_actual.tam, direccion_almacen, dir_proceso_borrar;
+        if(tam_proceso==-1){
+            dir_proceso_borrar = buscarPorceso(proceso_actual,vectorAL);
+            liberarDireccion(vectorAL,dir_proceso_borrar);
+        }else if(tam_proceso>0&&tam_proceso<=16){
+            if(memoriaDisponible(vectorAL)>tam_proceso){
+                direccion_almacen = solicitarDirMemoria(tam_proceso,vectorAL,0);
+                asignarProceso(proceso_actual,vectorAL,direccion_almacen);
+            }else{
+                printf("No hay suficiente memoria para el proceso %d", proceso_actual.id_proceso);
+            }
+        }else{
+            printf("El proceso %d tiene un tamaño invalido.\n",proceso_actual.id_proceso);
+        }
+        //TO-DO: UnirMemoria()
+        //Mejorar función de impresión para ver el id
+        imprimirMemoria(vectorAL);
+        imprimirVector(vectorAL);
+    }
+    
+    
+    
     liberarCola(&cola_procesos);
     cerrarVectorAL(vectorAL);
     return 0;
@@ -99,13 +116,13 @@ int main(int argc, char* argv[]){
 Lista** inicializarVectorAL(){
     int i=0;
     Proceso libre;
-    libre.id_proceso = -1;
-    libre.tam = 0;
+    libre.id_proceso = 0;
+    libre.tam = -1;
     Lista** vectorAL = (Lista**)malloc(5 * sizeof(Lista));
     for(i=0;i<5;i++){
         vectorAL[i] = crearLista();
     }
-    agregarFinal(vectorAL[4],libre,0);  //El elemento 4 está inicializado con el "proceso" -1
+    agregarFinal(vectorAL[4],libre,0);  //El elemento 4 está inicializado con el "proceso" com tamaño -1
     return vectorAL;
 }
 
@@ -203,7 +220,10 @@ void liberarLista(Lista* lista) {
 }
 
 int listaEstaVacia(Lista lista){
-    return lista.longitud;
+    if (lista.longitud)
+        return 0;
+    else
+        return 1;
 }
 
 Cola crearCola(){
@@ -293,38 +313,297 @@ Cola encolarProcesos(Cola * cola_procesos,FILE * archivo){
 
 void imprimirVector(Lista *lista[]){
     printf("Vector de areas libres\n");
-    printf("╔═══════╗\n");
-    printf("║       ║\n");
+    printf("╔═════╗\n");
     imprimirRenglon(0,lista[0]);
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
+    printf("╠═════╣\n");
     imprimirRenglon(1,lista[1]);
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
+    printf("╠═════╣\n");
     imprimirRenglon(2,lista[2]);
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
+    printf("╠═════╣\n");
     imprimirRenglon(3,lista[3]);
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
+    printf("╠═════╣\n");
     imprimirRenglon(4,lista[4]);
-    printf("║       ║\n");
-    printf("╚═══════╝\n");
+    printf("╚═════╝\n");
 
 }
 
 void imprimirRenglon(int numero,Lista *lista){
-    printf("║   %d   ║",numero);
+    printf("║  %d  ║",numero);
 
     Nodo* nodoActual = lista->inicio;
     while (nodoActual != NULL) {
-        printf(" -> [%d]", nodoActual->dir);
+        if(nodoActual->proc.tam > 0)
+            printf(" -> [Dir: %d, Proc: %d]", nodoActual->dir,nodoActual->proc.id_proceso);
+        else
+            printf(" -> [Dir: %d, Libre]", nodoActual->dir,nodoActual->proc.id_proceso);
         nodoActual = nodoActual->siguiente;
     }
 
     printf("\n");  
 }
+
+int memoriaDisponible(Lista** vectorAL){
+    int memoriaDisponible=0;
+    int i;
+    for(i=0;i<5;i++){
+        Lista listaActual =*vectorAL[i];
+        //imprimirRenglon(i,&listaActual);
+        if(listaEstaVacia(listaActual)) //Si la lista del slot del vector está vacía, sigue
+            continue;
+        else{
+            Nodo* nodoActual = listaActual.inicio;
+            while (nodoActual != NULL) {
+                if(nodoActual->proc.tam == -1) //Encontró un proceso libre
+                    memoriaDisponible += pow(2,i);
+                nodoActual = nodoActual->siguiente;
+            }
+        }
+    }
+    //printf("Memoria disponible: %d\n", memoriaDisponible);
+    return memoriaDisponible;
+}
+
+
+
+/// @brief Divide el segmento del vectorAL con el indice dado en 2, debe incluir la direccion de memoria.
+/// @param vectorAL El vectorAL que se va a dividir
+/// @param indice Indica que segmento de memoria de tamañano 2^indice se divde (2,4,8,16)
+/// @param direccion Es la direccion del segmento que se va a dividir
+/// @return Regresa 1 si el proceso fue exitoso, cero si ocurrió un error
+int dividirMemoria(Lista** vectorAL,int direccion){ 
+    if(direccion<0||direccion>15){
+        printf("Dirección no válida.\n");
+        return 0;
+    }
+
+    //Primero verifica que ese segmento exista en la dirección indicada
+    int indice = -1;
+    int i;
+    int posicion = 0;
+    int tam_pag;
+    int indice_div;
+    Lista * listaActual;
+    Lista * listaNueva;
+
+    for(i=0;i<5;i++){ //Recorre todo el vector AL
+        Lista listaTemp= *vectorAL[i];
+        if(listaEstaVacia(listaTemp)) //Si la lista del slot del vector está vacía, sigue
+            continue;
+        else{
+            Nodo* nodoActual = listaTemp.inicio;
+            while (nodoActual != NULL) {
+                if(nodoActual->dir == direccion){ //Encontró el nodo
+                    indice = i;
+                    tam_pag = pow(2,indice);
+                    listaActual = vectorAL[indice];
+                    break;
+                }
+                nodoActual = nodoActual->siguiente;
+            }
+        }
+    }
+
+    if(indice == -1){
+        printf("Esa direccion de memoria pertenece a un segmento.\n");
+        return 0;
+    }else if(indice == 0){
+        printf("No se puede dividir más la memoria.\n");
+        return 0;
+    }else if(!(direccion%tam_pag==0)){ //No es dirección valida
+        printf("No es una dirección divisible valida de memoria.\n", direccion%tam_pag);
+        return 0;
+    }else{
+        indice_div = pow(2,indice-1);
+        listaNueva = vectorAL[indice-1];
+    }
+    
+    Nodo* nodoActual = listaActual->inicio;
+    while (nodoActual != NULL) {
+        if(nodoActual->dir == direccion){ //Encontró el segmento que se quiere dividir
+            if(nodoActual->proc.tam==-1){ //Es un segmento, no un proceso
+                borrarElemento(listaActual,posicion);
+                Proceso libreA, libreB;
+                libreA.id_proceso = 0;
+                libreA.tam = -1;
+                libreB.id_proceso = 0;
+                libreB.tam = -1;
+                agregarFinal(listaNueva,libreA,direccion);
+                agregarFinal(listaNueva,libreB,direccion+indice_div);
+                return 1;
+            }else{
+                printf("Este marco está ocupado por el proceso %d de tamaño %d. No se puede dividir.\n",nodoActual->proc.id_proceso, nodoActual->proc.tam);
+                return 0;
+            }
+        }
+        nodoActual = nodoActual->siguiente;
+        posicion++;
+    }
+    printf("Este segmento de memoria no se puede dividir como se solicita.\n");
+    return 0;
+
+}
+
+void imprimirMemoria(Lista ** vectorAL){
+    printf("Dir    Memoria real\n");
+    printf("0 \t╔═══════╗\n");
+    int renglon = 0,i,j;
+    for(renglon = 0; renglon<16; renglon++){
+        for(i=0;i<5;i++){
+            Lista listaActual =*vectorAL[i];
+            if(listaEstaVacia(listaActual)) //Si la lista del slot del vector está vacía, sigue
+                continue;
+            else{
+                Nodo* nodoActual = listaActual.inicio;
+                while (nodoActual != NULL) {
+                    if(nodoActual->dir == renglon){
+                        for(j=0;j<(pow(2,i));j++){
+                            if (nodoActual->proc.tam==-1)
+                                printf("\t║       ║\n");
+                            else
+                                printf("\t║   X   ║\n", nodoActual->proc.id_proceso);
+                        }
+                        if(renglon+pow(2,i)==16)
+                            printf("\t╚═══════╝\n");
+                        else
+                            printf("%d\t╠═══════╣\n",renglon+ j);
+                    }
+                    nodoActual = nodoActual->siguiente;
+                }
+            }
+        }
+    }
+}
+
+/// @brief Consulta la memoria y la divida en caso de ser necesario
+/// @param tam El tamaño de memoria solicitado
+/// @param vectorAL El vector de areas libres
+/// @param divisiones Debe ser 0
+/// @return 
+int solicitarDirMemoria(int tam, Lista ** vectorAL,int divisiones){
+    int indice_segmento = ceil(log2(tam));
+    int i,j, dir=-1;
+    Lista listaTemp;
+    Nodo* nodoActual;
+
+    if(indice_segmento >  4){
+        return -1;
+    }
+
+    //for(i = indice_segmento; i<5;i++){
+    listaTemp = *vectorAL[indice_segmento];
+    if (listaEstaVacia(listaTemp)){ //Si no hay segmentos del tamaño requerido
+        divisiones++;
+        dir = solicitarDirMemoria(2*pow(2,indice_segmento),vectorAL,divisiones);
+    }else{ //La lista está llena
+        nodoActual = listaTemp.inicio;
+        while (nodoActual != NULL) {
+            if(nodoActual->proc.tam == -1){ //Encuentra un segmento disponible
+                while(divisiones){
+                    dividirMemoria(vectorAL,nodoActual->dir);
+                    divisiones--;
+                }
+                return nodoActual->dir;
+            }
+            nodoActual = nodoActual->siguiente;
+        }
+        if(dir ==-1){//Ningun elemento de la lista está libre
+            divisiones++;
+            dir = solicitarDirMemoria(2*pow(2,indice_segmento),vectorAL,divisiones);
+        }
+    }
+    return dir;
+}
+
+int asignarProceso(Proceso p, Lista ** vectorAL, int direccion){
+    int i;
+    if(direccion==-1){
+        printf("No hay memoria disponible.\n");
+        return -1;
+    }else{
+        for(i=0;i<5;i++){ //Recorre todo el vector AL
+        Lista listaTemp= *vectorAL[i];
+            if(listaEstaVacia(listaTemp)) //Si la lista del slot del vector está vacía, sigue
+                continue;
+            else{
+                Nodo* nodoActual = listaTemp.inicio;
+                while (nodoActual != NULL) {
+                    if(nodoActual->dir == direccion){ //Encontró el nodo
+                        nodoActual->proc.id_proceso = p.id_proceso;
+                        nodoActual->proc.tam = p.tam;
+                        return 1;
+                    }
+                    nodoActual = nodoActual->siguiente;
+                }
+            }
+        }
+    }
+    
+    printf("No se encontró la direccion de memoria.\n");
+    return -1;
+}
+
+int liberarDireccion(Lista ** vectorAL, int direccion){
+    int i;
+    if(direccion==-1){
+        printf("La dirección no es válida.\n");
+        return -1;
+    }else{
+        for(i=0;i<5;i++){ //Recorre todo el vector AL
+        Lista listaTemp= *vectorAL[i];
+            if(listaEstaVacia(listaTemp)) //Si la lista del slot del vector está vacía, sigue
+                continue;
+            else{
+                Nodo* nodoActual = listaTemp.inicio;
+                while (nodoActual != NULL) {
+                    if(nodoActual->dir == direccion){ //Encontró el nodo
+                        nodoActual->proc.id_proceso = 0;
+                        nodoActual->proc.tam = -1;
+                        return 1;
+                    }
+                    nodoActual = nodoActual->siguiente;
+                }
+            }
+        }
+    }
+}
+
+int buscarPorceso(Proceso p, Lista ** vectorAL){
+    int i;
+    
+    for(i=0;i<5;i++){ //Recorre todo el vector AL
+    Lista listaTemp= *vectorAL[i];
+        if(listaEstaVacia(listaTemp)) //Si la lista del slot del vector está vacía, sigue
+            continue;
+        else{
+            Nodo* nodoActual = listaTemp.inicio;
+            while (nodoActual != NULL) {
+                if(nodoActual->proc.id_proceso == p.id_proceso){ //Encontró el nodo
+                    return nodoActual->dir;
+                }
+                nodoActual = nodoActual->siguiente;
+            }
+        }
+    }
+    printf("No se encontró el proceso.\n");
+    
+}
+
+
+
+/*
+printf("║       ║\n");
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    printf("║       ║\n");
+    printf("╚═══════╝\n");
+*/
