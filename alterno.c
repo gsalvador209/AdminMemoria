@@ -99,13 +99,14 @@ int main(int argc, char* argv[]){
         }else{
             printf("El proceso %d tiene un tamaño invalido.\n",proceso_actual.id_proceso);
         }
-        //TO-DO: UnirMemoria()
+        
+        while(unirMemoria(vectorAL));
+        //TO-DO: 
+        //dividir el proceso en caso de que no quepa
         //Mejorar función de impresión para ver el id
         imprimirMemoria(vectorAL);
         imprimirVector(vectorAL);
     }
-    
-    
     
     liberarCola(&cola_procesos);
     cerrarVectorAL(vectorAL);
@@ -589,21 +590,61 @@ int buscarPorceso(Proceso p, Lista ** vectorAL){
 }
 
 
+int unirMemoria(Lista** vectorAL){ 
+    int indice = -1;
+    int i,j=0;
+    int posicionA=0, posicionB=0;
+    int dir=-1,dir2;
+    Lista * listaActual;
+    Lista * listaSiguiente;
+    Nodo * nodoActual;
+    Nodo * nodoNuevo;
+    
 
-/*
-printf("║       ║\n");
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
-    printf("║       ║\n");
-    printf("╠═══════╣\n");
-    printf("║       ║\n");
-    printf("║       ║\n");
-    printf("╚═══════╝\n");
-*/
+    for(i=0;i<4;i++){ //Recorre todo el vector AL menos el último elemento (de 14)
+        posicionA = 0;
+        listaActual= vectorAL[i];
+        if(listaEstaVacia(*listaActual)) //Si la lista del slot del vector está vacía, sigue
+            continue;
+        else{
+            nodoActual = listaActual->inicio;
+            while (nodoActual != NULL) {
+                if(nodoActual->proc.tam == -1){ //Encuentra un nodo libre
+                    dir=nodoActual->dir;
+                    break;
+                }
+                nodoActual = nodoActual->siguiente;
+                posicionA++;
+            }
+        }
+
+        if(dir!=-1){
+            dir2 = dir+pow(2,i);
+            nodoActual = listaActual->inicio;
+            while (nodoActual != NULL) {
+                if(nodoActual->proc.tam == -1 && nodoActual->dir == dir2){ //Encontró que el nodo adyacente está libre
+                   imprimirMemoria(vectorAL);
+                   imprimirVector(vectorAL);
+                   printf("Se unen los segmentos con direcciones %d y %d.\n",dir,dir2);
+                   listaSiguiente = vectorAL[i+1];
+                   Proceso p;
+                   p.id_proceso = 0;
+                   p.tam = -1;
+                   //Unir memoria
+                   borrarElemento(listaActual,posicionA);
+                   borrarElemento(listaActual,posicionB-1);
+                   agregarFinal(listaSiguiente,p,dir);
+                   return 1;
+                }
+                nodoActual = nodoActual->siguiente;
+                posicionB++;
+            }
+        }
+
+    }
+    return 0;
+
+}
+
+
+
