@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 //**********ESTRUCTURAS A USAR********************
-/// @brief Esta estructura almacena la info del proceso: su id y tamaño
+/// @brief Esta estructura almacena la info del proceso: su id y tamaño. id= -1 Indica memoria disponible
 typedef struct Proceso{
     int id_proceso; // El identificador de proceso
     int tam; //Tamaño del proceso
@@ -37,16 +37,19 @@ typedef struct {
 
 //*********PROTOTIPOS DE FUNCIONES********************
 //Operaciones vectorAL
-Lista* inicializarVectorAL();
-void cerrarVectorAL(Lista *);
+Lista** inicializarVectorAL();
+void cerrarVectorAL(Lista **);
+void imprimirVector(Lista **);
+void imprimirRenglon(int, Lista*);
 //Operaciones de lista
-Lista crearLista();
+Lista* crearLista();
 void agregarFinal(Lista*, Proceso, int);
 void borrarElemento(Lista*, int);
 void liberarLista(Lista*);
+int listaEstaVacia(Lista);
 //Operaciones de Cola
 Cola crearCola();
-int estaVacia(Cola);
+int colaEstaVacia(Cola);
 void encolar(Cola*, Proceso);
 Proceso frente(Cola);
 Proceso desencolar(Cola*);
@@ -60,7 +63,7 @@ Cola encolarProcesos(Cola *,FILE *);
 int main(int argc, char* argv[]){
     int id_proceso, tam;
     Cola cola_procesos = crearCola(); //Contiene todos los procesos indicados en el archivo de texto
-    Lista *vectorAL = inicializarVectorAL();
+    Lista **vectorAL = inicializarVectorAL();
 
     FILE * archivo = verificarArchivo(argc,argv);
     if (archivo == NULL){
@@ -69,10 +72,23 @@ int main(int argc, char* argv[]){
     
     encolarProcesos(&cola_procesos, archivo);
 
-    while(!estaVacia(cola_procesos)){
+    while(!colaEstaVacia(cola_procesos)){
         Proceso prueba = desencolar(&cola_procesos);
         printf("Proceso: %d Tamaño: %d.\n",prueba.id_proceso,prueba.tam);
     }    
+
+    //En este punto, todo el archivo fue codificado a la cola de procesos
+    //TO-DO:
+    //Verificar si el tamaño es -1 o >0
+        //Si es mayor a cero, asignarle espacio
+            //Verificar si hay espacio
+                //Si hay espacio, almacenarlo
+                //Si no hay, dividirlo en mitades
+        //Si es -1 liberar memoria
+    //Actualizar vector de AL
+    //Imprimir memoria
+
+    imprimirVector(vectorAL);
 
     liberarCola(&cola_procesos);
     cerrarVectorAL(vectorAL);
@@ -80,32 +96,42 @@ int main(int argc, char* argv[]){
 }
 
 /// @brief Crea el vector de areas libres y devuelve su dirección
-Lista* inicializarVectorAL(){
+Lista** inicializarVectorAL(){
     int i=0;
-    Lista* vectorAL = (Lista*)malloc(5 * sizeof(Lista));
-    for(i = 0; i < 5;i++){
+    Proceso libre;
+    libre.id_proceso = -1;
+    libre.tam = 0;
+    Lista** vectorAL = (Lista**)malloc(5 * sizeof(Lista));
+    for(i=0;i<5;i++){
         vectorAL[i] = crearLista();
     }
+    agregarFinal(vectorAL[4],libre,0);  //El elemento 4 está inicializado con el "proceso" -1
     return vectorAL;
 }
 
-void cerrarVectorAL(Lista * vectorAL){
+void cerrarVectorAL(Lista ** vectorAL){
     int i;
     for(i = 0; i < 5;i++){
-        liberarLista(&vectorAL[i]);
+        liberarLista(vectorAL[i]);
     }
     free(vectorAL);
 }
 
 
-Lista crearLista(){
-    Lista lista;
-    lista.inicio = NULL;
-    lista.fin = NULL;
-    lista.longitud = 0;
+/// @brief Crea una nueva lista
+/// @return Regresa una lista con inicio y fin en NULL, con longitud 0;
+Lista * crearLista(){
+    Lista* lista = (Lista*)malloc(sizeof(Lista));
+    lista->inicio = NULL;
+    lista->fin = NULL;
+    lista->longitud = 0;
     return lista;
 }
 
+/// @brief Agrega un nodo al final de una lista 
+/// @param lista Lista que se usa
+/// @param proc Proceso del nodo
+/// @param dir Dirección del nodo
 void agregarFinal(Lista* lista, Proceso proc, int dir){
     Nodo* nuevoNodo = (Nodo*)malloc(sizeof(Nodo));
     nuevoNodo->dir = dir;
@@ -124,6 +150,10 @@ void agregarFinal(Lista* lista, Proceso proc, int dir){
 
 }
 
+
+/// @brief Elimina un elemento específico de la lista
+/// @param lista La lista a la que se quitará un elemento
+/// @param posicion Posición del elemento que se va a borrar. Empieza en 0
 void borrarElemento(Lista* lista, int posicion) {
     if (posicion < 0 || posicion >= lista->longitud) {
         printf("Posición inválida.\n");
@@ -155,6 +185,8 @@ void borrarElemento(Lista* lista, int posicion) {
     lista->longitud--;
 }
 
+/// @brief Libera todos los elementos de la lista.
+/// @param lista La lista que se va aliberar de memoria
 void liberarLista(Lista* lista) {
     Nodo* nodoActual = lista->inicio;
     Nodo* nodoSiguiente = NULL;
@@ -170,6 +202,10 @@ void liberarLista(Lista* lista) {
     lista->longitud = 0;
 }
 
+int listaEstaVacia(Lista lista){
+    return lista.longitud;
+}
+
 Cola crearCola(){
     Cola cola;
     cola.frente = NULL;
@@ -177,7 +213,7 @@ Cola crearCola(){
     return cola;
 }
 
-int estaVacia(Cola cola){
+int colaEstaVacia(Cola cola){
     return cola.frente == NULL; //Compara si es NULL
 }
 
@@ -186,7 +222,7 @@ void encolar(Cola* cola, Proceso proc) {
     nuevoNodo->proc = proc;
     nuevoNodo->siguiente = NULL;
 
-    if (estaVacia(*cola)) {
+    if (colaEstaVacia(*cola)) {
         cola->frente = nuevoNodo;
         cola->final = nuevoNodo;
     } else {
@@ -197,16 +233,19 @@ void encolar(Cola* cola, Proceso proc) {
 
 Proceso frente(Cola cola) { //Ve el elemento de enfrente
     Proceso proc;
-    if (estaVacia(cola)) {
+    if (colaEstaVacia(cola)) {
         printf("La cola está vacía.\n");
         return proc; 
     }
     return cola.frente->proc;
 }
 
+/// @brief Regresa el proceso del elemento de enfrente y lo desencola
+/// @param cola La cola de procesos
+/// @return El proceso que estaba al frente
 Proceso desencolar(Cola* cola) { //Regresa el proceso del elemento del frnte y desencola
     Proceso proc;
-    if (estaVacia(*cola)) {
+    if (colaEstaVacia(*cola)) {
         printf("La cola está vacía.\n");
         return proc; 
     }
@@ -221,7 +260,7 @@ Proceso desencolar(Cola* cola) { //Regresa el proceso del elemento del frnte y d
 }
 
 void liberarCola(Cola* cola) {
-    while (!estaVacia(*cola)) {
+    while (!colaEstaVacia(*cola)) {
         desencolar(cola);
     }
 }
@@ -250,4 +289,42 @@ Cola encolarProcesos(Cola * cola_procesos,FILE * archivo){
         encolar(cola_procesos,p);
     }
     fclose(archivo);
+}
+
+void imprimirVector(Lista *lista[]){
+    printf("Vector de areas libres\n");
+    printf("╔═══════╗\n");
+    printf("║       ║\n");
+    imprimirRenglon(0,lista[0]);
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    imprimirRenglon(1,lista[1]);
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    imprimirRenglon(2,lista[2]);
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    imprimirRenglon(3,lista[3]);
+    printf("║       ║\n");
+    printf("╠═══════╣\n");
+    printf("║       ║\n");
+    imprimirRenglon(4,lista[4]);
+    printf("║       ║\n");
+    printf("╚═══════╝\n");
+
+}
+
+void imprimirRenglon(int numero,Lista *lista){
+    printf("║   %d   ║",numero);
+
+    Nodo* nodoActual = lista->inicio;
+    while (nodoActual != NULL) {
+        printf(" -> [%d]", nodoActual->dir);
+        nodoActual = nodoActual->siguiente;
+    }
+
+    printf("\n");  
 }
