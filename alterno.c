@@ -1,3 +1,12 @@
+/*
+Elaborar un programa en ANSI C que efectúe la administración de memoria por paginación,
+utilizando un vector “de áreas libres” (el que usa Linux) tanto para la asignación como para
+liberación de marcos de página de memoria real.
+*/
+
+//Elaborado por: 
+// Chávez Villanueva Giovanni Salvador
+//
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -58,7 +67,7 @@ Proceso desencolar(Cola*);
 void liberarCola(Cola* );
 //Lectura del archivo
 FILE* verificarArchivo(int, char**);
-Cola encolarProcesos(Cola *,FILE *);
+void encolarProcesos(Cola *,FILE *);
 //Memoria
 int memoriaDisponible(Lista**);
 void imprimirMemoria(Lista **);
@@ -134,6 +143,8 @@ Lista** inicializarVectorAL(){
     return vectorAL;
 }
 
+/// @brief Libera la memoria del vector primero liberando cada lista y después el vector completo
+/// @param vectorAL El vector AL que se va a eliminar
 void cerrarVectorAL(Lista ** vectorAL){
     int i;
     for(i = 0; i < 5;i++){
@@ -227,6 +238,9 @@ void liberarLista(Lista* lista) {
     lista->longitud = 0;
 }
 
+/// @brief Verifica si una lista está vacía por su longitud
+/// @param lista Lista a verificar
+/// @return 1 si está vacía, 0 si no lo está
 int listaEstaVacia(Lista lista){
     if (lista.longitud)
         return 0;
@@ -234,6 +248,8 @@ int listaEstaVacia(Lista lista){
         return 1;
 }
 
+/// @brief Genera una cola inicializandola con frente y final en NULL
+/// @return La cola generada
 Cola crearCola(){
     Cola cola;
     cola.frente = NULL;
@@ -241,10 +257,16 @@ Cola crearCola(){
     return cola;
 }
 
+/// @brief Verifica si una cola está vacía por la dirección de su nodo de enfrente
+/// @param cola La cola que se va a revisar
+/// @return 1 si está vacía, 0 si no
 int colaEstaVacia(Cola cola){
     return cola.frente == NULL; //Compara si es NULL
 }
 
+/// @brief Agrega un proceso al último lugar de la cola
+/// @param cola Cola que se va a manejar
+/// @param proc El proceso que se va a encolar
 void encolar(Cola* cola, Proceso proc) {
     NodoProc* nuevoNodo = (NodoProc*)malloc(sizeof(NodoProc));
     nuevoNodo->proc = proc;
@@ -259,6 +281,9 @@ void encolar(Cola* cola, Proceso proc) {
     }
 }
 
+/// @brief Muestra el frente de una cola sin desencolar el elemento
+/// @param cola La cola a revisar
+/// @return El proceso de enfrente
 Proceso frente(Cola cola) { //Ve el elemento de enfrente
     Proceso proc;
     if (colaEstaVacia(cola)) {
@@ -267,6 +292,22 @@ Proceso frente(Cola cola) { //Ve el elemento de enfrente
     }
     return cola.frente->proc;
 }
+
+
+/// @brief Coloca un proceso en el frente de la cola
+/// @param cola Cola de procesos
+/// @param proc Proceso que se va a almcacenar
+void colocarAlFrente(Cola* cola, Proceso proc) {
+    NodoProc* nuevoNodo = (NodoProc*)malloc(sizeof(NodoProc));
+    nuevoNodo->proc = proc;
+    nuevoNodo->siguiente = cola->frente;
+    cola->frente = nuevoNodo;
+
+    if (cola->final == NULL) {
+        cola->final = nuevoNodo;
+    }
+}
+
 
 /// @brief Regresa el proceso del elemento de enfrente y lo desencola
 /// @param cola La cola de procesos
@@ -287,12 +328,18 @@ Proceso desencolar(Cola* cola) { //Regresa el proceso del elemento del frnte y d
     return proc; 
 }
 
+/// @brief Extrae todos los elementos de la cola y la deja vacia
+/// @param cola Cola que se va a vaciar
 void liberarCola(Cola* cola) {
     while (!colaEstaVacia(*cola)) {
         desencolar(cola);
     }
 }
 
+/// @brief Toma los argumentos dados y determina si se puede o no abrir el archivo
+/// @param argc El número de argumentos dados al ejecutar el programa
+/// @param argv La cadena de argumentos recibida, la primera es el programa y la segunda el archivo de texto
+/// @return El puntero del archivo de texto
 FILE* verificarArchivo(int argc, char* argv[]){
     if (argc < 2) { //Para ejecutarse, se debe dar el nombre del archivo
         printf("Ingresa el nombre del archivo como primer argumento.\n");
@@ -308,7 +355,10 @@ FILE* verificarArchivo(int argc, char* argv[]){
     return archivo;
 }
 
-Cola encolarProcesos(Cola * cola_procesos,FILE * archivo){
+/// @brief Llena la cola dada con todos los procesos detectados en el archivo y lo cierra.
+/// @param cola_procesos La dirección de la cola de procesos
+/// @param archivo La dirección del archivo
+void encolarProcesos(Cola * cola_procesos,FILE * archivo){
     int id_proceso, tam;
     while (fscanf(archivo, "%d %d", &id_proceso, &tam) == 2) {
         Proceso p;
@@ -319,6 +369,8 @@ Cola encolarProcesos(Cola * cola_procesos,FILE * archivo){
     fclose(archivo);
 }
 
+/// @brief Imprime el vector de Areas libres. Los procesos los indica con su id. Los marcos de página los muestra como "Libre"
+/// @param lista El vector de proceso
 void imprimirVector(Lista *lista[]){
     printf("Vector de areas libres\n");
     printf("╔═════╗\n");
@@ -335,6 +387,9 @@ void imprimirVector(Lista *lista[]){
 
 }
 
+/// @brief Función auxiliar para imprimir el vector de procesos
+/// @param numero El número de renglón que es, sirve para determinar el tamaño de memoria
+/// @param lista El vector de areas libres
 void imprimirRenglon(int numero,Lista *lista){
     printf("║  %d  ║",numero);
 
@@ -350,6 +405,9 @@ void imprimirRenglon(int numero,Lista *lista){
     printf("\n");  
 }
 
+/// @brief Indica la memoria disponible en terminos de marcos
+/// @param vectorAL El vector de Areas Libres
+/// @return El número de slots libres
 int memoriaDisponible(Lista** vectorAL){
     int memoriaDisponible=0;
     int i;
@@ -451,6 +509,8 @@ int dividirMemoria(Lista** vectorAL,int direccion){
 
 }
 
+/// @brief Dibuja en pantalla la memoria. La memoria libre la dibuja vacía y la ocupada por procesos la marca como ocupada e indica su id de proceso. Dibuja las divisiones de memoria realizadas
+/// @param vectorAL El vector de Areas Libres
 void imprimirMemoria(Lista ** vectorAL){
     printf("Dir    Memoria real\n");
     printf("0 \t╔═══════╗\n");
@@ -522,6 +582,11 @@ int solicitarDirMemoria(int tam, Lista ** vectorAL,int divisiones){
     return dir;
 }
 
+/// @brief Asigna un espacio de memoria a un proceso
+/// @param p El proceso que va a ser asignado
+/// @param vectorAL El vector de Areas Libres
+/// @param direccion La dirección de memoria donde será guardado
+/// @return 1 si se logró asignar memoria, -1 si no.
 int asignarProceso(Proceso p, Lista ** vectorAL, int direccion){
     int i;
     if(direccion==-1){
@@ -550,6 +615,10 @@ int asignarProceso(Proceso p, Lista ** vectorAL, int direccion){
     return -1;
 }
 
+/// @brief Libera una dirección de memoria cuando el proceso haya terminado
+/// @param vectorAL EL vector de Areas Libres
+/// @param direccion La dirección de memoria que se va a liberar (la función sabe cuál es el tamaño de memoria que debe liberar)
+/// @return 1 si libreró correctamente, -1 si recibe una dirección no válida
 int liberarDireccion(Lista ** vectorAL, int direccion){
     int i;
     if(direccion==-1){
@@ -575,6 +644,10 @@ int liberarDireccion(Lista ** vectorAL, int direccion){
     }
 }
 
+/// @brief Busca la dirección de un proceso dado
+/// @param p Proceso que va a buscar
+/// @param vectorAL Vector de Areas libres
+/// @return Regresa la dirección de memoria del proceso. -1 si no encontró el proceso.
 int buscarPorceso(Proceso p, Lista ** vectorAL){
     int i;
     
@@ -596,6 +669,9 @@ int buscarPorceso(Proceso p, Lista ** vectorAL){
     
 }
 
+/// @brief Une la memoria disponible en caso de que sean adyacentes y puedan unirse de acuerdo a las reglas establecidas
+/// @param vectorAL Vector de areas libres
+/// @return 1 si realizó una división, 0 si no realizó una división
 int unirMemoria(Lista** vectorAL){ 
     int indice = -1;
     int i,j=0;
@@ -653,6 +729,11 @@ int unirMemoria(Lista** vectorAL){
     return 0;
 }
 
+/// @brief Divide un proceso en dos de la mitad de tamaño y los almacena en el frente de la cola de procesos
+/// @param vectorAL Vector de areas libres
+/// @param P Proceso que se va a dividir
+/// @param cola_procesos Cola de procesos
+/// @return 1 si logró dividir y guardar los procesos, -1 si no se puede dividir más el proceso
 int dividirProceso(Lista** vectorAL, Proceso P, Cola * cola_procesos){
     int tam = P.tam;
     int mitad = tam/2;
@@ -666,19 +747,22 @@ int dividirProceso(Lista** vectorAL, Proceso P, Cola * cola_procesos){
         B.tam = mitad;
         colocarAlFrente(cola_procesos,A);
         colocarAlFrente(cola_procesos,B);
+        return 1;
     }else{
         //No se puede dividir más el proceso+
         return -1;
     }
 }
 
-void colocarAlFrente(Cola* cola, Proceso proc) {
-    NodoProc* nuevoNodo = (NodoProc*)malloc(sizeof(NodoProc));
-    nuevoNodo->proc = proc;
-    nuevoNodo->siguiente = cola->frente;
-    cola->frente = nuevoNodo;
+/* Conclusiones
+Chávez Villanueva Giovanni Salvador: Este programa me ayudó mucho a proacticar mis habilidades de programación,
+repasar lo visto en clase sobre la colocación de memoria virtual con el vector de áreas libres. Con este programa
+reforcé mucho de lo aprendido en mi carrera con C, las estructuras y el manejo de memoria. Me enorgullezco de este 
+programa porque es funcional y presenta la memoria y el vector de areas libres de manera amigable.
 
-    if (cola->final == NULL) {
-        cola->final = nuevoNodo;
-    }
-}
+
+
+
+
+
+*/
