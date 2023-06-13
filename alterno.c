@@ -6,7 +6,7 @@ liberación de marcos de página de memoria real.
 
 //Elaborado por: 
 // Chávez Villanueva Giovanni Salvador
-//
+// Mendoza Flores Axel Fernando 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -761,7 +761,8 @@ reforcé mucho de lo aprendido en mi carrera con C, las estructuras y el manejo 
 programa porque es funcional y presenta la memoria y el vector de areas libres de manera amigable.
 
 
-
+Mendoza Flores Axel Fernando: El programa habria cumplido su función la cual sería permitir un uso óptimo de los recursos del sistema operativo; Se ha logrado una asignación y liberación eficiente de la memoria
+La implementación del programa ha tenido un nivel de complejidad alto, lo visto en clase ha sido de ayuda pero llevar la realización de este proyecto exigía más habilidades del programador, sin embargo, se pudo salir adelante con el programa.
 
 
 
