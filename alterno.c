@@ -66,6 +66,10 @@ int dividirMemoria(Lista**,int);
 int solicitarDirMemoria(int,Lista**,int);
 int asignarProceso(Proceso , Lista **, int );
 int liberarDireccion(Lista **, int);
+int buscarPorceso(Proceso,Lista **);
+int unirMemoria(Lista **);
+void colocarAlFrente(Cola*, Proceso);
+int dividirProceso(Lista**, Proceso, Cola *);
 
 
 int main(int argc, char* argv[]){
@@ -92,18 +96,21 @@ int main(int argc, char* argv[]){
         }else if(tam_proceso>0&&tam_proceso<=16){
             if(memoriaDisponible(vectorAL)>tam_proceso){
                 direccion_almacen = solicitarDirMemoria(tam_proceso,vectorAL,0);
-                asignarProceso(proceso_actual,vectorAL,direccion_almacen);
+                if(direccion_almacen == -1){
+                    dividirProceso(vectorAL,proceso_actual,&cola_procesos);
+                }else{
+                    asignarProceso(proceso_actual,vectorAL,direccion_almacen);    
+                }
+                
             }else{
                 printf("No hay suficiente memoria para el proceso %d", proceso_actual.id_proceso);
+                //encolar(&cola_procesos,proceso_actual); Posible bucle
             }
         }else{
             printf("El proceso %d tiene un tamaño invalido.\n",proceso_actual.id_proceso);
         }
         
         while(unirMemoria(vectorAL));
-        //TO-DO: 
-        //dividir el proceso en caso de que no quepa
-        //Mejorar función de impresión para ver el id
         imprimirMemoria(vectorAL);
         imprimirVector(vectorAL);
     }
@@ -461,7 +468,7 @@ void imprimirMemoria(Lista ** vectorAL){
                             if (nodoActual->proc.tam==-1)
                                 printf("\t║       ║\n");
                             else
-                                printf("\t║   X   ║\n", nodoActual->proc.id_proceso);
+                                printf("\t║   X   ║  %d\n", nodoActual->proc.id_proceso);
                         }
                         if(renglon+pow(2,i)==16)
                             printf("\t╚═══════╝\n");
@@ -589,7 +596,6 @@ int buscarPorceso(Proceso p, Lista ** vectorAL){
     
 }
 
-
 int unirMemoria(Lista** vectorAL){ 
     int indice = -1;
     int i,j=0;
@@ -620,31 +626,59 @@ int unirMemoria(Lista** vectorAL){
 
         if(dir!=-1){
             dir2 = dir+pow(2,i);
-            nodoActual = listaActual->inicio;
-            while (nodoActual != NULL) {
-                if(nodoActual->proc.tam == -1 && nodoActual->dir == dir2){ //Encontró que el nodo adyacente está libre
-                   imprimirMemoria(vectorAL);
-                   imprimirVector(vectorAL);
-                   printf("Se unen los segmentos con direcciones %d y %d.\n",dir,dir2);
-                   listaSiguiente = vectorAL[i+1];
-                   Proceso p;
-                   p.id_proceso = 0;
-                   p.tam = -1;
-                   //Unir memoria
-                   borrarElemento(listaActual,posicionA);
-                   borrarElemento(listaActual,posicionB-1);
-                   agregarFinal(listaSiguiente,p,dir);
-                   return 1;
+            if(dir2%(int)pow(2,i)==0){ //Verifica que sean segmentos que sí se puedan unir
+                nodoActual = listaActual->inicio;
+                while (nodoActual != NULL) {
+                    if(nodoActual->proc.tam == -1 && nodoActual->dir == dir2){ //Encontró que el nodo adyacente está libre
+                    imprimirMemoria(vectorAL);
+                    imprimirVector(vectorAL);
+                    printf("Se unen los segmentos con direcciones %d y %d.\n",dir,dir2);
+                    listaSiguiente = vectorAL[i+1];
+                    Proceso p;
+                    p.id_proceso = 0;
+                    p.tam = -1;
+                    //Unir memoria
+                    borrarElemento(listaActual,posicionA);
+                    borrarElemento(listaActual,posicionB-1);
+                    agregarFinal(listaSiguiente,p,dir);
+                    return 1;
+                    }
+                    nodoActual = nodoActual->siguiente;
+                    posicionB++;
                 }
-                nodoActual = nodoActual->siguiente;
-                posicionB++;
             }
         }
 
     }
     return 0;
-
 }
 
+int dividirProceso(Lista** vectorAL, Proceso P, Cola * cola_procesos){
+    int tam = P.tam;
+    int mitad = tam/2;
+    if(mitad>1){
+        Proceso A;
+        Proceso B;
 
+        A.id_proceso = P.id_proceso;
+        B.id_proceso = P.id_proceso;
+        A.tam = mitad;
+        B.tam = mitad;
+        colocarAlFrente(cola_procesos,A);
+        colocarAlFrente(cola_procesos,B);
+    }else{
+        //No se puede dividir más el proceso+
+        return -1;
+    }
+}
 
+void colocarAlFrente(Cola* cola, Proceso proc) {
+    NodoProc* nuevoNodo = (NodoProc*)malloc(sizeof(NodoProc));
+    nuevoNodo->proc = proc;
+    nuevoNodo->siguiente = cola->frente;
+    cola->frente = nuevoNodo;
+
+    if (cola->final == NULL) {
+        cola->final = nuevoNodo;
+    }
+}
